@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onBeforeMount, computed } from "vue";
+import { ref, onMounted, onBeforeMount } from "vue";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import SLCard from "../components/common/SLCard.vue";
 import SLButton from "../components/common/SLButton.vue";
@@ -62,8 +62,8 @@ async function handleCheckUpdate() {
       // 没有更新
       updateInfo.value = {
         has_update: false,
-        latest_version: version,
-        current_version: version,
+        latest_version: version.value,
+        current_version: version.value,
       };
     }
   } catch (error) {

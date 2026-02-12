@@ -70,7 +70,14 @@ pub async fn check_update(
             let name = asset.name.to_lowercase();
             name.ends_with(".exe") || name.ends_with(".msi")
         })
-        .map(|asset| asset.browser_download_url.clone());
+        .map(|asset| asset.browser_download_url.clone())
+        .or_else(|| {
+            // 如果没有找到安装包，返回Release页面链接
+            Some(format!(
+                "https://gitee.com/{}/{}/releases/tag/{}",
+                owner, repo, release.tag_name
+            ))
+        });
 
     Ok(UpdateInfo {
         has_update,
