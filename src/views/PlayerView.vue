@@ -11,6 +11,8 @@ import { useServerStore } from "../stores/serverStore";
 import { useConsoleStore } from "../stores/consoleStore";
 import { playerApi, type PlayerEntry, type BanEntry, type OpEntry } from "../api/player";
 import { serverApi } from "../api/server";
+import { TIME, MESSAGES } from "../utils/constants";
+import { validatePlayerName, handleError } from "../utils/errorHandler";
 
 const route = useRoute();
 const store = useServerStore();
@@ -130,8 +132,17 @@ function openAddModal() {
 }
 
 async function handleAdd() {
-  if (!addPlayerName.value.trim()) { error.value = "请输入玩家名"; return; }
-  if (!isRunning.value) { error.value = "服务器未运行，无法执行命令"; return; }
+  // 验证玩家名
+  const validation = validatePlayerName(addPlayerName.value);
+  if (!validation.valid) {
+    error.value = validation.error || MESSAGES.ERROR.INVALID_PLAYER_NAME;
+    return;
+  }
+
+  if (!isRunning.value) {
+    error.value = MESSAGES.ERROR.SERVER_NOT_RUNNING;
+    return;
+  }
 
   addLoading.value = true;
   error.value = null;
@@ -140,55 +151,60 @@ async function handleAdd() {
     switch (activeTab.value) {
       case "whitelist":
         await playerApi.addToWhitelist(sid, addPlayerName.value);
+        success.value = MESSAGES.SUCCESS.WHITELIST_ADDED;
         break;
       case "banned":
         await playerApi.banPlayer(sid, addPlayerName.value, addBanReason.value);
+        success.value = MESSAGES.SUCCESS.PLAYER_BANNED;
         break;
       case "ops":
         await playerApi.addOp(sid, addPlayerName.value);
+        success.value = MESSAGES.SUCCESS.OP_ADDED;
         break;
     }
     showAddModal.value = false;
-    success.value = "命令已发送，请等待几秒后刷新";
-    setTimeout(() => { success.value = null; loadAll(); }, 3000);
+    setTimeout(() => { success.value = null; loadAll(); }, TIME.SUCCESS_MESSAGE_DURATION);
   } catch (e) {
-    error.value = String(e);
+    error.value = handleError(e, "AddPlayer");
   } finally {
     addLoading.value = false;
   }
 }
 
 async function handleRemoveWhitelist(name: string) {
-  if (!isRunning.value) { error.value = "服务器未运行"; return; }
+  if (!isRunning.value) { error.value = MESSAGES.ERROR.SERVER_NOT_RUNNING; return; }
   try {
     await playerApi.removeFromWhitelist(selectedServerId.value, name);
-    success.value = "已发送移除命令"; setTimeout(() => { success.value = null; loadAll(); }, 2000);
-  } catch (e) { error.value = String(e); }
+    success.value = MESSAGES.SUCCESS.WHITELIST_REMOVED;
+    setTimeout(() => { success.value = null; loadAll(); }, TIME.SUCCESS_MESSAGE_DURATION);
+  } catch (e) { error.value = handleError(e, "RemoveWhitelist"); }
 }
 
 async function handleUnban(name: string) {
-  if (!isRunning.value) { error.value = "服务器未运行"; return; }
+  if (!isRunning.value) { error.value = MESSAGES.ERROR.SERVER_NOT_RUNNING; return; }
   try {
     await playerApi.unbanPlayer(selectedServerId.value, name);
-    success.value = "已发送解封命令"; setTimeout(() => { success.value = null; loadAll(); }, 2000);
-  } catch (e) { error.value = String(e); }
+    success.value = MESSAGES.SUCCESS.PLAYER_UNBANNED;
+    setTimeout(() => { success.value = null; loadAll(); }, TIME.SUCCESS_MESSAGE_DURATION);
+  } catch (e) { error.value = handleError(e, "UnbanPlayer"); }
 }
 
 async function handleRemoveOp(name: string) {
-  if (!isRunning.value) { error.value = "服务器未运行"; return; }
+  if (!isRunning.value) { error.value = MESSAGES.ERROR.SERVER_NOT_RUNNING; return; }
   try {
     await playerApi.removeOp(selectedServerId.value, name);
-    success.value = "已发送取消OP命令"; setTimeout(() => { success.value = null; loadAll(); }, 2000);
-  } catch (e) { error.value = String(e); }
+    success.value = MESSAGES.SUCCESS.OP_REMOVED;
+    setTimeout(() => { success.value = null; loadAll(); }, TIME.SUCCESS_MESSAGE_DURATION);
+  } catch (e) { error.value = handleError(e, "RemoveOp"); }
 }
 
 async function handleKick(name: string) {
-  if (!isRunning.value) { error.value = "服务器未运行"; return; }
+  if (!isRunning.value) { error.value = MESSAGES.ERROR.SERVER_NOT_RUNNING; return; }
   try {
     await playerApi.kickPlayer(selectedServerId.value, name);
-    success.value = name + " 已被踢出";
-    setTimeout(() => { success.value = null; parseOnlinePlayers(); }, 2000);
-  } catch (e) { error.value = String(e); }
+    success.value = `${name} ${MESSAGES.SUCCESS.PLAYER_KICKED}`;
+    setTimeout(() => { success.value = null; parseOnlinePlayers(); }, TIME.SUCCESS_MESSAGE_DURATION);
+  } catch (e) { error.value = handleError(e, "KickPlayer"); }
 }
 
 function getAddLabel(): string {

@@ -31,14 +31,7 @@ const groups = [
 ];
 
 function navigateTo(path: string) {
-  console.log('[AppSidebar] 点击导航:', path);
-  console.log('[AppSidebar] 当前路由:', route.path);
-  try {
-    router.push(path);
-    console.log('[AppSidebar] 路由跳转成功');
-  } catch (error) {
-    console.error('[AppSidebar] 路由跳转失败:', error);
-  }
+  router.push(path);
 }
 
 function isActive(path: string): boolean {

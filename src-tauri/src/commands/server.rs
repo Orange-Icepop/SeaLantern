@@ -1,11 +1,8 @@
 use crate::models::server::*;
-use std::sync::OnceLock;
-use crate::models::server::*;
-use crate::services::server_manager::ServerManager;
+use crate::services::global;
 
-fn manager() -> &'static ServerManager {
-    static INSTANCE: OnceLock<ServerManager> = OnceLock::new();
-    INSTANCE.get_or_init(ServerManager::new)
+fn manager() -> &'static crate::services::server_manager::ServerManager {
+    global::server_manager()
 }
 
 

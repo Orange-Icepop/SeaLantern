@@ -75,7 +75,7 @@ impl ServerManager {
         let server = {
             let servers = self.servers.lock().unwrap();
             servers.iter().find(|s| s.id == id)
-                .ok_or_else(|| "Server not found".to_string())?.clone()
+                .ok_or_else(|| "未找到服务器".to_string())?.clone()
         };
 
         // Check if already running
@@ -84,7 +84,7 @@ impl ServerManager {
             if let Some(child) = procs.get_mut(id) {
                 match child.try_wait() {
                     Ok(Some(_)) => { procs.remove(id); } // Dead process, clean up
-                    Ok(None) => return Err("Server is already running".to_string()),
+                    Ok(None) => return Err("服务器已在运行中".to_string()),
                     Err(_) => { procs.remove(id); }
                 }
             }
@@ -114,7 +114,7 @@ impl ServerManager {
             cmd.creation_flags(CREATE_NO_WINDOW);
         }
 
-        let mut child = cmd.spawn().map_err(|e| format!("Failed to start: {}", e))?;
+        let mut child = cmd.spawn().map_err(|e| format!("启动失败: {}", e))?;
         let stdout = child.stdout.take();
         let stderr = child.stderr.take();
         self.processes.lock().unwrap().insert(id.to_string(), child);
@@ -126,7 +126,7 @@ impl ServerManager {
             }
         }
         self.save();
-        self.append_log(id, "[Sea Lantern] Server starting...");
+        self.append_log(id, "[Sea Lantern] 服务器启动中...");
 
         let logs_ref = &self.logs as *const Mutex<HashMap<String, Vec<String>>>;
         let max_lines = settings.max_log_lines as usize;
@@ -137,7 +137,9 @@ impl ServerManager {
                 let m = unsafe { &*(ptr as *const Mutex<HashMap<String, Vec<String>>>) };
                 for line in BufReader::new(out).lines() {
                     match line {
-                        Ok(t) => { if let Ok(mut l) = m.lock() { if let Some(v) = l.get_mut(&lid) { v.push(t); if v.len() > ml { let d = v.len()-ml; v.drain(0..d); } } } }
+                        Ok(t) => {
+                            if let Ok(mut l) = m.lock() { if let Some(v) = l.get_mut(&lid) { v.push(t); if v.len() > ml { let d = v.len()-ml; v.drain(0..d); } } }
+                        }
                         Err(_) => break,
                     }
                 }
@@ -149,7 +151,9 @@ impl ServerManager {
                 let m = unsafe { &*(ptr as *const Mutex<HashMap<String, Vec<String>>>) };
                 for line in BufReader::new(err).lines() {
                     match line {
-                        Ok(t) => { if let Ok(mut l) = m.lock() { if let Some(v) = l.get_mut(&lid) { v.push(format!("[STDERR] {}", t)); if v.len() > ml { let d = v.len()-ml; v.drain(0..d); } } } }
+                        Ok(t) => {
+                            if let Ok(mut l) = m.lock() { if let Some(v) = l.get_mut(&lid) { v.push(format!("[STDERR] {}", t)); if v.len() > ml { let d = v.len()-ml; v.drain(0..d); } } }
+                        }
                         Err(_) => break,
                     }
                 }
@@ -172,12 +176,12 @@ impl ServerManager {
         };
 
         if !is_running {
-            self.append_log(id, "[Sea Lantern] Server is not running");
+            self.append_log(id, "[Sea Lantern] 服务器未运行");
             return Ok(());
         }
 
         // Send stop command
-        self.append_log(id, "[Sea Lantern] Sending stop command...");
+        self.append_log(id, "[Sea Lantern] 正在发送停止命令...");
         let _ = self.send_command(id, "stop");
 
         // Wait for graceful shutdown (up to 10 seconds)
@@ -188,7 +192,7 @@ impl ServerManager {
                 match child.try_wait() {
                     Ok(Some(_)) => {
                         procs.remove(id);
-                        self.append_log(id, "[Sea Lantern] Server stopped gracefully");
+                        self.append_log(id, "[Sea Lantern] 服务器已正常停止");
                         return Ok(());
                     }
                     Ok(None) => {} // Still running
@@ -198,7 +202,7 @@ impl ServerManager {
                     }
                 }
             } else {
-                self.append_log(id, "[Sea Lantern] Server stopped");
+                self.append_log(id, "[Sea Lantern] 服务器已停止");
                 return Ok(());
             }
         }
@@ -208,17 +212,17 @@ impl ServerManager {
         if let Some(mut child) = procs.remove(id) {
             let _ = child.kill();
             let _ = child.wait();
-            self.append_log(id, "[Sea Lantern] Server force-killed after timeout");
+            self.append_log(id, "[Sea Lantern] 服务器超时，已强制终止");
         }
         Ok(())
     }
 
     pub fn send_command(&self, id: &str, command: &str) -> Result<(), String> {
         let mut procs = self.processes.lock().unwrap();
-        let child = procs.get_mut(id).ok_or_else(|| "Server is not running".to_string())?;
+        let child = procs.get_mut(id).ok_or_else(|| "服务器未运行".to_string())?;
         if let Some(ref mut stdin) = child.stdin {
-            writeln!(stdin, "{}", command).map_err(|e| format!("Failed: {}", e))?;
-            stdin.flush().map_err(|e| format!("Failed: {}", e))?;
+            writeln!(stdin, "{}", command).map_err(|e| format!("发送失败: {}", e))?;
+            stdin.flush().map_err(|e| format!("发送失败: {}", e))?;
         }
         Ok(())
     }

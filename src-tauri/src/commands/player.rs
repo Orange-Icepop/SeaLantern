@@ -1,11 +1,9 @@
 use crate::services::player_manager;
 use crate::services::player_manager::{PlayerEntry, BanEntry, OpEntry};
-use std::sync::OnceLock;
-use crate::services::server_manager::ServerManager;
+use crate::services::global;
 
-fn manager() -> &'static ServerManager {
-    static INSTANCE: OnceLock<ServerManager> = OnceLock::new();
-    INSTANCE.get_or_init(ServerManager::new)
+fn manager() -> &'static crate::services::server_manager::ServerManager {
+    global::server_manager()
 }
 
 
@@ -32,14 +30,41 @@ pub fn get_ops(server_path: String) -> Result<Vec<OpEntry>, String> {
 pub fn add_to_whitelist(server_id: String, name: String) -> Result<String, String> {
     let cmd = format!("whitelist add {}", name);
     manager().send_command(&server_id, &cmd)?;
+    // Force save whitelist to file and reload
+    let _ = manager().send_command(&server_id, "whitelist reload");
+    // Give server time to write the file
+    std::thread::sleep(std::time::Duration::from_millis(500));
     Ok(format!("Sent: {}", cmd))
 }
 
 #[tauri::command]
 pub fn remove_from_whitelist(server_id: String, name: String) -> Result<String, String> {
+    // First, try to remove via command
     let cmd = format!("whitelist remove {}", name);
-    manager().send_command(&server_id, &cmd)?;
-    Ok(format!("Sent: {}", cmd))
+    let _ = manager().send_command(&server_id, &cmd);
+
+    // Also manually remove from file to ensure it's gone
+    let servers = manager().get_server_list();
+    if let Some(server) = servers.iter().find(|s| s.id == server_id) {
+        let whitelist_path = std::path::Path::new(&server.path).join("whitelist.json");
+        if whitelist_path.exists() {
+            if let Ok(content) = std::fs::read_to_string(&whitelist_path) {
+                if let Ok(mut list) = serde_json::from_str::<Vec<player_manager::PlayerEntry>>(&content) {
+                    // Remove player from list (case-insensitive comparison)
+                    list.retain(|p| !p.name.eq_ignore_ascii_case(&name));
+                    // Write back to file
+                    if let Ok(json) = serde_json::to_string_pretty(&list) {
+                        let _ = std::fs::write(&whitelist_path, json);
+                    }
+                }
+            }
+        }
+    }
+
+    // Reload whitelist
+    let _ = manager().send_command(&server_id, "whitelist reload");
+
+    Ok(format!("Removed: {}", name))
 }
 
 #[tauri::command]
@@ -89,5 +114,5 @@ pub fn kick_player(server_id: String, name: String, reason: String) -> Result<St
 pub fn export_logs(logs: Vec<String>, save_path: String) -> Result<(), String> {
     let content = logs.join("\n");
     std::fs::write(&save_path, content)
-        .map_err(|e| format!("Failed to write: {}", e))
+        .map_err(|e| format!("保存失败: {}", e))
 }

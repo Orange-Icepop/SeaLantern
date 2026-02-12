@@ -21,6 +21,9 @@ const suggestionIndex = ref(0);
 const commandHistory = ref<string[]>([]);
 const historyIndex = ref(-1);
 const consoleFontSize = ref(13);
+const startLoading = ref(false);
+const stopLoading = ref(false);
+const isPolling = ref(false);  // 添加轮询锁
 let pollTimer: ReturnType<typeof setInterval> | null = null;
 
 const allCommands = [
@@ -66,6 +69,13 @@ const serverOptions = computed(() =>
   serverStore.servers.map((s) => ({ label: s.name + " (" + s.id.substring(0, 8) + ")", value: s.id }))
 );
 
+const serverStatus = computed(() =>
+  serverStore.statuses[serverId.value]?.status || "Stopped"
+);
+
+const isRunning = computed(() => serverStatus.value === "Running");
+const isStopped = computed(() => serverStatus.value === "Stopped");
+
 watch(() => currentLogs.value.length, () => {
   if (!userScrolledUp.value) doScroll();
 });
@@ -96,26 +106,41 @@ onMounted(async () => {
   nextTick(() => doScroll());
 });
 
-onUnmounted(() => { stopPolling(); });
+onUnmounted(() => {
+  stopPolling();
+});
 
 function startPolling() {
   stopPolling();
   pollTimer = setInterval(async () => {
-    const sid = serverId.value;
-    if (!sid) return;
-    const cursor = consoleStore.getLogCursor(sid);
+    // 防止并发执行
+    if (isPolling.value) return;
+    isPolling.value = true;
+
     try {
-      const newLines = await serverApi.getLogs(sid, cursor);
-      if (newLines.length > 0) {
-        consoleStore.appendLogs(sid, newLines);
-        consoleStore.setLogCursor(sid, cursor + newLines.length);
-      }
-    } catch (_e) {}
-    await serverStore.refreshStatus(sid);
+      const sid = serverId.value;
+      if (!sid) return;
+      const cursor = consoleStore.getLogCursor(sid);
+      try {
+        const newLines = await serverApi.getLogs(sid, cursor);
+        if (newLines.length > 0) {
+          consoleStore.appendLogs(sid, newLines);
+          consoleStore.setLogCursor(sid, cursor + newLines.length);
+        }
+      } catch (_e) {}
+      await serverStore.refreshStatus(sid);
+    } finally {
+      isPolling.value = false;
+    }
   }, 800);
 }
 
-function stopPolling() { if (pollTimer) { clearInterval(pollTimer); pollTimer = null; } }
+function stopPolling() {
+  if (pollTimer) {
+    clearInterval(pollTimer);
+    pollTimer = null;
+  }
+}
 
 async function sendCommand(cmd?: string) {
   const command = (cmd || commandInput.value).trim();
@@ -183,14 +208,18 @@ function handleScroll() {
 
 async function handleStart() {
   const sid = serverId.value; if (!sid) return;
+  startLoading.value = true;
   try { await serverApi.start(sid); await serverStore.refreshStatus(sid); }
   catch (e) { consoleStore.appendLocal(sid, "[ERROR] " + String(e)); }
+  finally { startLoading.value = false; }
 }
 
 async function handleStop() {
   const sid = serverId.value; if (!sid) return;
+  stopLoading.value = true;
   try { await serverApi.stop(sid); await serverStore.refreshStatus(sid); }
   catch (e) { consoleStore.appendLocal(sid, "[ERROR] " + String(e)); }
+  finally { stopLoading.value = false; }
 }
 
 async function exportLogs() {
@@ -233,8 +262,8 @@ function getStatusText(): string {
         </div>
       </div>
       <div class="toolbar-right">
-        <SLButton variant="primary" size="sm" @click="handleStart">启动</SLButton>
-        <SLButton variant="danger" size="sm" @click="handleStop">停止</SLButton>
+        <SLButton variant="primary" size="sm" :loading="startLoading" :disabled="isRunning || startLoading" @click="handleStart">启动</SLButton>
+        <SLButton variant="danger" size="sm" :loading="stopLoading" :disabled="isStopped || stopLoading" @click="handleStop">停止</SLButton>
         <SLButton variant="secondary" size="sm" @click="exportLogs">复制日志</SLButton>
         <SLButton variant="ghost" size="sm" @click="serverId && consoleStore.clearLogs(serverId)">清屏</SLButton>
       </div>
