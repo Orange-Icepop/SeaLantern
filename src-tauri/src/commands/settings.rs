@@ -1,5 +1,7 @@
 use crate::models::settings::AppSettings;
 use crate::services::global;
+use font_kit::source::SystemSource;
+use std::collections::HashSet;
 #[cfg(target_os = "windows")]
 use window_vibrancy;
 
@@ -70,4 +72,20 @@ pub fn apply_acrylic(window: tauri::Window, enabled: bool, dark_mode: bool) -> R
         let _ = (window, enabled, dark_mode);
     }
     Ok(())
+}
+
+#[tauri::command]
+pub fn get_system_fonts() -> Result<Vec<String>, String> {
+    let source = SystemSource::new();
+    let fonts = source.all_families().map_err(|e| format!("Failed to get fonts: {}", e))?;
+    
+    let mut unique_fonts: HashSet<String> = HashSet::new();
+    for font in fonts {
+        unique_fonts.insert(font);
+    }
+    
+    let mut sorted_fonts: Vec<String> = unique_fonts.into_iter().collect();
+    sorted_fonts.sort_by(|a, b| a.to_lowercase().cmp(&b.to_lowercase()));
+    
+    Ok(sorted_fonts)
 }

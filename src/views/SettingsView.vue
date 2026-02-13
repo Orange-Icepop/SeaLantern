@@ -6,12 +6,13 @@ import SLInput from "../components/common/SLInput.vue";
 import SLSwitch from "../components/common/SLSwitch.vue";
 import SLModal from "../components/common/SLModal.vue";
 import SLSelect from "../components/common/SLSelect.vue";
-import { settingsApi, checkAcrylicSupport, applyAcrylic, type AppSettings } from "../api/settings";
+import { settingsApi, checkAcrylicSupport, applyAcrylic, getSystemFonts, type AppSettings } from "../api/settings";
 import { systemApi } from "../api/system";
 import { convertFileSrc } from "@tauri-apps/api/core";
 
 const settings = ref<AppSettings | null>(null);
 const loading = ref(true);
+const fontsLoading = ref(false);
 const saving = ref(false);
 const error = ref<string | null>(null);
 const success = ref<string | null>(null);
@@ -44,6 +45,10 @@ const themeOptions = [
   { label: "深色", value: "dark" },
 ];
 
+const fontFamilyOptions = ref<{ label: string; value: string }[]>([
+  { label: "系统默认", value: "" },
+]);
+
 const showImportModal = ref(false);
 const importJson = ref("");
 const showResetConfirm = ref(false);
@@ -68,6 +73,7 @@ function isAnimatedImage(path: string): boolean {
 
 onMounted(async () => {
   await loadSettings();
+  await loadSystemFonts();
   // 检测亚克力支持
   try {
     acrylicSupported.value = await checkAcrylicSupport();
@@ -75,6 +81,21 @@ onMounted(async () => {
     acrylicSupported.value = false;
   }
 });
+
+async function loadSystemFonts() {
+  fontsLoading.value = true;
+  try {
+    const fonts = await getSystemFonts();
+    fontFamilyOptions.value = [
+      { label: "系统默认", value: "" },
+      ...fonts.map(font => ({ label: font, value: `'${font}'` }))
+    ];
+  } catch (e) {
+    console.error("Failed to load system fonts:", e);
+  } finally {
+    fontsLoading.value = false;
+  }
+}
 
 watch(bgSettingsExpanded, (expanded) => {
   if (expanded && settings.value?.background_image) {
@@ -102,6 +123,7 @@ async function loadSettings() {
     // 应用已保存的设置
     applyTheme(s.theme);
     applyFontSize(s.font_size);
+    applyFontFamily(s.font_family);
   } catch (e) {
     error.value = String(e);
   } finally {
@@ -134,6 +156,23 @@ function handleFontSizeChange() {
   markChanged();
   const size = parseInt(uiFontSize.value) || 14;
   applyFontSize(size);
+}
+
+function applyFontFamily(fontFamily: string) {
+  if (fontFamily) {
+    document.documentElement.style.setProperty('--sl-font-sans', fontFamily);
+    document.documentElement.style.setProperty('--sl-font-display', fontFamily);
+  } else {
+    document.documentElement.style.removeProperty('--sl-font-sans');
+    document.documentElement.style.removeProperty('--sl-font-display');
+  }
+}
+
+function handleFontFamilyChange() {
+  markChanged();
+  if (settings.value) {
+    applyFontFamily(settings.value.font_family);
+  }
 }
 
 async function handleAcrylicChange(enabled: boolean) {
@@ -225,6 +264,7 @@ async function resetSettings() {
     setTimeout(() => (success.value = null), 3000);
     applyTheme(s.theme);
     applyFontSize(s.font_size);
+    applyFontFamily(s.font_family);
   } catch (e) {
     error.value = String(e);
   }
@@ -262,6 +302,7 @@ async function handleImport() {
     setTimeout(() => (success.value = null), 3000);
     applyTheme(s.theme);
     applyFontSize(s.font_size);
+    applyFontFamily(s.font_family);
   } catch (e) {
     error.value = String(e);
   }
@@ -443,6 +484,24 @@ function clearBackgroundImage() {
                 class="sl-slider"
               />
               <span class="slider-value">{{ uiFontSize }}px</span>
+            </div>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-label">字体</span>
+              <span class="setting-desc">选择界面使用的字体，部分字体需要系统已安装或从网络加载</span>
+            </div>
+            <div class="input-lg">
+              <SLSelect
+                v-model="settings.font_family"
+                :options="fontFamilyOptions"
+                :searchable="true"
+                :loading="fontsLoading"
+                :previewFont="true"
+                placeholder="搜索字体..."
+                @update:modelValue="handleFontFamilyChange"
+              />
             </div>
           </div>
 

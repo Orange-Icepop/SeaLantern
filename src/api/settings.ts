@@ -20,6 +20,7 @@ export interface AppSettings {
   acrylic_enabled: boolean;
   theme: string;
   font_size: number;
+  font_family: string;
 }
 
 export const settingsApi = {
@@ -46,4 +47,8 @@ export async function checkAcrylicSupport(): Promise<boolean> {
 
 export async function applyAcrylic(enabled: boolean, darkMode: boolean): Promise<void> {
   return tauriInvoke<void>('apply_acrylic', { enabled, darkMode });
+}
+
+export async function getSystemFonts(): Promise<string[]> {
+  return tauriInvoke<string[]>('get_system_fonts');
 }

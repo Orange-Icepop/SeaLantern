@@ -60,6 +60,9 @@ pub struct AppSettings {
     // 文本大小: 12-24，默认 14
     #[serde(default = "default_font_size")]
     pub font_size: u32,
+
+    #[serde(default = "default_font_family")]
+    pub font_family: String,
 }
 
 fn default_true() -> bool { true }
@@ -74,6 +77,7 @@ fn default_bg_brightness() -> f32 { 1.0 }
 fn default_bg_size() -> String { "cover".to_string() }
 fn default_theme() -> String { "auto".to_string() }
 fn default_font_size() -> u32 { 14 }
+fn default_font_family() -> String { String::new() }
 
 impl Default for AppSettings {
     fn default() -> Self {
@@ -96,6 +100,7 @@ impl Default for AppSettings {
             acrylic_enabled: false,
             theme: "auto".to_string(),
             font_size: 14,
+            font_family: String::new(),
         }
     }
 }
