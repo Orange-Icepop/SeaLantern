@@ -27,11 +27,6 @@ const props = withDefaults(defineProps<Props>(), {
   previewFont: false,
 });
 
-function getFontStyle(value: string | number) {
-  if (!props.previewFont || !value) return {};
-  return { fontFamily: String(value) };
-}
-
 const emit = defineEmits<{
   "update:modelValue": [value: string | number];
 }>();
@@ -43,37 +38,52 @@ const dropdownRef = ref<HTMLElement | null>(null);
 const inputRef = ref<HTMLInputElement | null>(null);
 const highlightedIndex = ref(-1);
 
+
+const getFontStyle = (value: string | number) => {
+  if (!props.previewFont || !value) return {};
+  return { fontFamily: String(value) };
+};
+
+
+
 const selectedOption = computed(() => {
-  return props.options.find(opt => opt.value === props.modelValue);
+  const currentValue = props.modelValue;
+  if (currentValue === undefined) return undefined;
+  return props.options.find((opt: Option) => opt.value === currentValue);
 });
 
+
 const filteredOptions = computed(() => {
-  if (!props.searchable || !searchQuery.value) return props.options;
+  if (!props.searchable || !searchQuery.value.trim()) return props.options;
+  
   const query = searchQuery.value.toLowerCase();
-  return props.options.filter(opt => 
+  return props.options.filter((opt: Option) => 
     opt.label.toLowerCase().includes(query)
   );
 });
 
-function toggleDropdown() {
+
+const toggleDropdown = () => {
   if (props.disabled) return;
+  
   isOpen.value = !isOpen.value;
   if (isOpen.value) {
     searchQuery.value = "";
     highlightedIndex.value = -1;
     if (props.searchable) {
-      setTimeout(() => inputRef.value?.focus(), 0);
+      requestAnimationFrame(() => inputRef.value?.focus());
     }
   }
-}
+};
 
-function selectOption(option: Option) {
+const selectOption = (option: Option) => {
   emit("update:modelValue", option.value);
   isOpen.value = false;
   searchQuery.value = "";
-}
+};
 
-function handleKeydown(e: KeyboardEvent) {
+
+const handleKeydown = (e: KeyboardEvent) => {
   if (!isOpen.value) {
     if (e.key === "Enter" || e.key === " " || e.key === "ArrowDown") {
       e.preventDefault();
@@ -82,46 +92,59 @@ function handleKeydown(e: KeyboardEvent) {
     return;
   }
 
+  const handleArrowDown = () => {
+    e.preventDefault();
+    highlightedIndex.value = Math.min(
+      highlightedIndex.value + 1,
+      filteredOptions.value.length - 1
+    );
+    scrollToHighlighted();
+  };
+
+  const handleArrowUp = () => {
+    e.preventDefault();
+    highlightedIndex.value = Math.max(highlightedIndex.value - 1, 0);
+    scrollToHighlighted();
+  };
+
+  const handleEnter = () => {
+    e.preventDefault();
+    if (highlightedIndex.value >= 0 && filteredOptions.value[highlightedIndex.value]) {
+      selectOption(filteredOptions.value[highlightedIndex.value]);
+    }
+  };
+
   switch (e.key) {
     case "ArrowDown":
-      e.preventDefault();
-      highlightedIndex.value = Math.min(
-        highlightedIndex.value + 1,
-        filteredOptions.value.length - 1
-      );
-      scrollToHighlighted();
+      handleArrowDown();
       break;
     case "ArrowUp":
-      e.preventDefault();
-      highlightedIndex.value = Math.max(highlightedIndex.value - 1, 0);
-      scrollToHighlighted();
+      handleArrowUp();
       break;
     case "Enter":
-      e.preventDefault();
-      if (highlightedIndex.value >= 0 && filteredOptions.value[highlightedIndex.value]) {
-        selectOption(filteredOptions.value[highlightedIndex.value]);
-      }
+      handleEnter();
       break;
     case "Escape":
       isOpen.value = false;
       break;
   }
-}
+};
 
-function scrollToHighlighted() {
-  setTimeout(() => {
+const scrollToHighlighted = () => {
+  requestAnimationFrame(() => {
     const highlighted = dropdownRef.value?.querySelector(".highlighted");
-    highlighted?.scrollIntoView({ block: "nearest" });
-  }, 0);
-}
+    highlighted?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  });
+};
 
-function handleClickOutside(e: MouseEvent) {
+const handleClickOutside = (e: MouseEvent) => {
   if (containerRef.value && !containerRef.value.contains(e.target as Node)) {
     isOpen.value = false;
   }
-}
+};
 
-watch(searchQuery, () => {
+
+const stopWatch = watch(searchQuery, () => {
   highlightedIndex.value = filteredOptions.value.length > 0 ? 0 : -1;
 });
 
@@ -131,6 +154,11 @@ onMounted(() => {
 
 onUnmounted(() => {
   document.removeEventListener("click", handleClickOutside);
+  stopWatch(); 
+
+  containerRef.value = null;
+  dropdownRef.value = null;
+  inputRef.value = null;
 });
 </script>
 
@@ -144,10 +172,13 @@ onUnmounted(() => {
       @click="toggleDropdown"
       @keydown="handleKeydown"
       tabindex="0"
+      role="combobox"
+      :aria-expanded="isOpen"
+      :aria-disabled="disabled"
     >
-      <span v-if="loading" class="sl-select-loading">
-        <svg class="spinner" viewBox="0 0 24 24" width="16" height="16">
-          <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" stroke-dasharray="31.4 31.4" />
+      <span v-if="loading" class="sl-select-loading" aria-live="polite">
+        <svg class="spinner" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+          <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" />
         </svg>
         加载中...
       </span>
@@ -156,29 +187,30 @@ onUnmounted(() => {
       </span>
       <span v-else class="sl-select-placeholder">{{ placeholder }}</span>
       
-      <svg class="sl-select-arrow" :class="{ open: isOpen }" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+      <svg class="sl-select-arrow" :class="{ open: isOpen }" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
         <path d="M6 9l6 6 6-6" />
       </svg>
     </div>
 
     <Transition name="dropdown">
-      <div v-if="isOpen" class="sl-select-dropdown" ref="dropdownRef">
+      <div v-if="isOpen" class="sl-select-dropdown" ref="dropdownRef" role="listbox">
         <div v-if="searchable" class="sl-select-search">
-          <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
             <circle cx="11" cy="11" r="8" />
             <path d="M21 21l-4.35-4.35" />
           </svg>
           <input
             ref="inputRef"
-            v-model="searchQuery"
+            v-model.lazy="searchQuery"
             type="text"
             placeholder="搜索..."
             class="sl-select-input"
             @keydown="handleKeydown"
+            aria-label="搜索选项"
           />
         </div>
         
-        <div class="sl-select-options" :style="{ maxHeight }">
+        <div class="sl-select-options" :style="{ maxHeight }" role="presentation">
           <div v-if="filteredOptions.length === 0" class="sl-select-empty">
             未找到匹配项
           </div>
@@ -193,9 +225,11 @@ onUnmounted(() => {
             :style="getFontStyle(option.value)"
             @click="selectOption(option)"
             @mouseenter="highlightedIndex = index"
+            role="option"
+            :aria-selected="option.value === modelValue"
           >
             <span class="option-label">{{ option.label }}</span>
-            <svg v-if="option.value === modelValue" class="check-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <svg v-if="option.value === modelValue" class="check-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
               <path d="M20 6L9 17l-5-5" />
             </svg>
           </div>
@@ -209,6 +243,18 @@ onUnmounted(() => {
 .sl-select {
   position: relative;
   width: 100%;
+  --sl-transition-fast: 0.15s;
+  --sl-radius-md: 6px;
+  --sl-space-xs: 4px;
+  --sl-primary: #007AFF;
+  --sl-primary-bg: rgba(0, 122, 255, 0.1);
+  --sl-surface: #FFFFFF;
+  --sl-surface-hover: #F5F5F5;
+  --sl-border: #E0E0E0;
+  --sl-border-hover: #BDBDBD;
+  --sl-text-primary: #212121;
+  --sl-text-secondary: #666666;
+  --sl-text-tertiary: #9E9E9E;
 }
 
 .sl-select-label {
@@ -233,6 +279,7 @@ onUnmounted(() => {
   transition: all var(--sl-transition-fast);
   color: var(--sl-text-primary);
   min-height: 38px;
+  box-sizing: border-box;
 }
 
 .sl-select-trigger:hover:not(.disabled) {
@@ -277,6 +324,7 @@ onUnmounted(() => {
 
 .sl-select-loading .spinner {
   animation: spin 1s linear infinite;
+  transform-origin: center;
 }
 
 @keyframes spin {
@@ -306,6 +354,7 @@ onUnmounted(() => {
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
   z-index: 1000;
   overflow: hidden;
+  will-change: transform, opacity; 
 }
 
 .sl-select-search {
@@ -328,6 +377,7 @@ onUnmounted(() => {
   font-size: 0.875rem;
   color: var(--sl-text-primary);
   outline: none;
+  width: 100%;
 }
 
 .sl-select-input::placeholder {
@@ -337,23 +387,17 @@ onUnmounted(() => {
 .sl-select-options {
   overflow-y: auto;
   overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch; 
 }
+
 
 .sl-select-options::-webkit-scrollbar {
   width: 6px;
 }
 
-.sl-select-options::-webkit-scrollbar-track {
-  background: transparent;
-}
-
 .sl-select-options::-webkit-scrollbar-thumb {
   background: var(--sl-border);
   border-radius: 3px;
-}
-
-.sl-select-options::-webkit-scrollbar-thumb:hover {
-  background: var(--sl-text-tertiary);
 }
 
 .sl-select-empty {
@@ -370,6 +414,7 @@ onUnmounted(() => {
   padding: 10px 12px;
   cursor: pointer;
   transition: background var(--sl-transition-fast);
+  user-select: none; /* 提升交互性能 */
 }
 
 .sl-select-option:hover,
@@ -395,14 +440,28 @@ onUnmounted(() => {
   margin-left: 8px;
 }
 
+
 .dropdown-enter-active,
 .dropdown-leave-active {
   transition: all 0.15s ease;
+  will-change: transform, opacity;
 }
 
 .dropdown-enter-from,
 .dropdown-leave-to {
   opacity: 0;
   transform: translateY(-8px);
+}
+
+
+@media (max-width: 768px) {
+  .sl-select-trigger {
+    min-height: 44px; 
+    font-size: 16px; 
+  }
+  
+  .sl-select-option {
+    min-height: 44px;
+  }
 }
 </style>
