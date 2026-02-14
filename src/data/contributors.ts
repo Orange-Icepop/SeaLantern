@@ -54,6 +54,18 @@ export const contributors: Contributor[] = [
     role: "打杂",
     avatar: "https://minotar.net/avatar/Little100/64",
   },
+  {
+    name: "MinecraftYJQ",
+    role: "小修小改罢",
+    avatar: "https://minotar.net/avatar/MinecraftYJQ_/64",
+  },
+  {
+    name: "HKYZYH",
+    role: "修复Wayland协议下白屏问题",
+    avatar: "https://minotar.net/avatar/HKYZYH/64",
+    url: "https://gitee.com/HKYZYHgezi",
+  },
+
   
   // ============================================
   // 在这里添加更多贡献者！
