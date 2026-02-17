@@ -120,7 +120,7 @@ function updateNavIndicator() {
       navIndicator.value.style.display = 'block';
       
       // 强制触发重排，确保动画能够正确执行
-      navIndicator.value.offsetHeight; // 触发重排
+      void navIndicator.value.offsetHeight; // 触发重排
       
       // 使用 requestAnimationFrame 确保动画在正确的时机执行
       requestAnimationFrame(() => {
