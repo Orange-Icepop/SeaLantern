@@ -224,11 +224,7 @@ watch(
               :aria-selected="option.value === modelValue"
             >
               <span class="option-label">{{ option.label }}</span>
-              <Check
-                v-if="option.value === modelValue"
-                class="check-icon"
-                :size="16"
-              />
+              <Check v-if="option.value === modelValue" class="check-icon" :size="16" />
             </div>
             <div v-if="options.length === 0" class="server-selector-empty">
               {{ i18n.t("common.no_servers") }}
@@ -444,14 +440,30 @@ watch(
   animation: option-fade-in 0.2s ease backwards;
 }
 
-.server-selector-option:nth-child(1) { animation-delay: 0.02s; }
-.server-selector-option:nth-child(2) { animation-delay: 0.04s; }
-.server-selector-option:nth-child(3) { animation-delay: 0.06s; }
-.server-selector-option:nth-child(4) { animation-delay: 0.08s; }
-.server-selector-option:nth-child(5) { animation-delay: 0.1s; }
-.server-selector-option:nth-child(6) { animation-delay: 0.12s; }
-.server-selector-option:nth-child(7) { animation-delay: 0.14s; }
-.server-selector-option:nth-child(8) { animation-delay: 0.16s; }
+.server-selector-option:nth-child(1) {
+  animation-delay: 0.02s;
+}
+.server-selector-option:nth-child(2) {
+  animation-delay: 0.04s;
+}
+.server-selector-option:nth-child(3) {
+  animation-delay: 0.06s;
+}
+.server-selector-option:nth-child(4) {
+  animation-delay: 0.08s;
+}
+.server-selector-option:nth-child(5) {
+  animation-delay: 0.1s;
+}
+.server-selector-option:nth-child(6) {
+  animation-delay: 0.12s;
+}
+.server-selector-option:nth-child(7) {
+  animation-delay: 0.14s;
+}
+.server-selector-option:nth-child(8) {
+  animation-delay: 0.16s;
+}
 
 @keyframes option-fade-in {
   from {

@@ -161,10 +161,7 @@ function handleMinimalModeChange(value: boolean) {
           <span class="sl-setting-label">{{ i18n.t("settings.minimal_mode") }}</span>
           <span class="sl-setting-desc">{{ i18n.t("settings.minimal_mode_desc") }}</span>
         </div>
-        <SLSwitch
-          :model-value="minimalMode"
-          @update:model-value="handleMinimalModeChange"
-        />
+        <SLSwitch :model-value="minimalMode" @update:model-value="handleMinimalModeChange" />
       </div>
 
       <BackgroundSettings
