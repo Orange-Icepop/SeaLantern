@@ -106,6 +106,7 @@ jobs:
             echo "后端检查通过。"
           else
             echo "::notice title=后端检查::有未通过项。"
+            exit 1
           fi
 
   frontend:
@@ -190,4 +191,5 @@ jobs:
             echo "前端检查通过。"
           else
             echo "::notice title=前端检查::有未通过项。"
+            exit 1
           fi
