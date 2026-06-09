@@ -9,34 +9,6 @@ use crate::hardcode_data::server_downloads::STARTER_INSTALLER_LINKS_FILE_NAME;
 /// services/settings_manager.rs
 pub const SETTINGS_FILE: &str = "sea_lantern_settings.json";
 
-/// services/java_detector.rs
-#[cfg(target_os = "windows")]
-pub const CREATE_NO_WINDOW: u32 = 0x08000000;
-
-#[cfg(target_os = "windows")]
-pub const JAVA_PATH_ALIASES: &[&str] = &[
-    "java", "jdk", "jre", "graalvm", "corretto", "temurin", "zulu", "openjdk", "gvl", "ojdk",
-    "bin", "j",
-];
-
-pub const ENV_VARS: &[&str] = &["JAVA_HOME", "JDK_HOME", "GRAALVM_HOME"];
-
-#[cfg(target_os = "windows")]
-pub const PROGRAM_FILES_JAVA_DIRS: &[&str] = &["Java", "Zulu", "Eclipse Adoptium", "BellSoft"];
-
-#[cfg(target_os = "windows")]
-pub const USER_PROFILE_JAVA_DIRS: &[&str] = &["scoop\\apps\\jabba\\current\\jdk"];
-
-#[cfg(not(target_os = "windows"))]
-pub const COMMON_JAVA_DIRS: &[&str] =
-    &["/usr/lib/jvm", "/usr/local/lib/jvm", "/Library/Java/JavaVirtualMachines"];
-
-#[cfg(target_os = "windows")]
-pub const MAX_SCAN_DEPTH: u32 = 5;
-
-#[cfg(not(target_os = "windows"))]
-pub const MAX_SCAN_DEPTH: u32 = 4;
-
 /// services/i18n.rs（与前端 `src/language/*.json` 语言代码一致）
 pub const SUPPORTED_LOCALES: &[&str] = &[
     "zh-CN", "en-US", "zh-TW", "de-DE", "es-ES", "fr-FA", "ja-JP", "ko-KR", "ru-RU", "vi-VN",
