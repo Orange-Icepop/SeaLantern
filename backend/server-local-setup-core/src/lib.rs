@@ -165,7 +165,12 @@ pub fn resolve_existing_server_requested_startup(
     custom_command: Option<&str>,
     executable_path: Option<&str>,
 ) -> Result<Option<ExistingServerStartupSelection>, ResolveExistingServerStartupError> {
-    if requested_startup_mode.to_ascii_lowercase() == "custom" {
+    let normalized_startup_mode = trim_optional_text(Some(requested_startup_mode));
+
+    if normalized_startup_mode
+        .as_deref()
+        .is_some_and(|mode| mode.eq_ignore_ascii_case("custom"))
+    {
         let command = trim_optional_text(custom_command)
             .ok_or(ResolveExistingServerStartupError::CustomCommandEmpty)?;
         return Ok(Some(ExistingServerStartupSelection {
@@ -1015,7 +1020,7 @@ pub fn windows_script_prefers_utf8(startup_mode: &str, startup_path: &Path) -> b
 
 pub fn resolve_managed_console_encoding(
     startup_mode: &str,
-    startup_path: &Path,
+    _startup_path: &Path,
 ) -> ManagedConsoleEncoding {
     if startup_mode_is_custom(startup_mode) {
         return ManagedConsoleEncoding::Utf8;
@@ -1024,7 +1029,7 @@ pub fn resolve_managed_console_encoding(
     #[cfg(target_os = "windows")]
     {
         if startup_mode_uses_windows_script_encoding_detection(startup_mode) {
-            return if windows_script_prefers_utf8(startup_mode, startup_path) {
+            return if windows_script_prefers_utf8(startup_mode, _startup_path) {
                 ManagedConsoleEncoding::Utf8
             } else {
                 ManagedConsoleEncoding::Gbk
@@ -1161,7 +1166,7 @@ fn normalize_path_for_compare(path: &Path) -> String {
         .trim_end_matches('/')
         .to_string();
 
-    if cfg!(windows) {
+    if cfg!(windows) || is_windows_absolute_path(&normalized) {
         normalized.to_ascii_lowercase()
     } else {
         normalized
@@ -1642,7 +1647,7 @@ mod tests {
     #[test]
     fn resolve_existing_server_requested_startup_handles_custom_and_explicit_executable() {
         let custom =
-            resolve_existing_server_requested_startup("custom", Some("  launch-paper  "), None)
+            resolve_existing_server_requested_startup(" custom ", Some("  launch-paper  "), None)
                 .expect("custom startup should resolve");
 
         assert_eq!(
