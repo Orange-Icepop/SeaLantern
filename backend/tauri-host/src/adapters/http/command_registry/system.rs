@@ -1,10 +1,11 @@
 use super::common::{handle_unsupported, CommandHandler, RegistryBuilder};
-use crate::commands::app::host as system_commands;
+use crate::commands::app::host as host_commands;
 use crate::commands::app::logging as logging_commands;
 use serde_json::Value;
 pub(super) fn register_handlers(builder: &mut RegistryBuilder) {
     builder.register("get_system_info", handle_get_system_info as CommandHandler);
     builder.register("get_default_run_path", handle_get_default_run_path as CommandHandler);
+    builder.register("get_app_version", handle_get_app_version as CommandHandler);
     builder
         .register("get_server_resource_usage", handle_get_server_resource_usage as CommandHandler);
     builder.register("get_safe_mode_status", handle_get_safe_mode_status as CommandHandler);
@@ -24,7 +25,7 @@ fn handle_get_system_info(
     _params: Value,
 ) -> futures::future::BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move {
-        let result = system_commands::get_system_info()?;
+        let result = host_commands::get_system_info()?;
         Ok(result)
     })
 }
@@ -33,7 +34,16 @@ fn handle_get_default_run_path(
     _params: Value,
 ) -> futures::future::BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move {
-        let result = system_commands::get_default_run_path()?;
+        let result = host_commands::get_default_run_path()?;
+        serde_json::to_value(result).map_err(|error| error.to_string())
+    })
+}
+
+fn handle_get_app_version(
+    _params: Value,
+) -> futures::future::BoxFuture<'static, Result<Value, String>> {
+    Box::pin(async move {
+        let result = host_commands::get_app_version()?;
         serde_json::to_value(result).map_err(|error| error.to_string())
     })
 }
@@ -48,7 +58,7 @@ fn handle_get_server_resource_usage(
             .ok_or_else(|| "Missing serverId".to_string())?
             .to_string();
 
-        let result = system_commands::get_server_resource_usage(server_id)?;
+        let result = host_commands::get_server_resource_usage(server_id)?;
         Ok(result)
     })
 }
@@ -57,7 +67,7 @@ fn handle_get_safe_mode_status(
     _params: Value,
 ) -> futures::future::BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move {
-        let result = system_commands::get_safe_mode_status()?;
+        let result = host_commands::get_safe_mode_status()?;
         serde_json::to_value(result).map_err(|error| error.to_string())
     })
 }
@@ -65,14 +75,14 @@ fn handle_get_safe_mode_status(
 fn handle_test_ipv6_connectivity(
     _params: Value,
 ) -> futures::future::BoxFuture<'static, Result<Value, String>> {
-    Box::pin(async move { system_commands::test_ipv6_connectivity().await })
+    Box::pin(async move { host_commands::test_ipv6_connectivity().await })
 }
 
 fn handle_frontend_heartbeat(
     _params: Value,
 ) -> futures::future::BoxFuture<'static, Result<Value, String>> {
     Box::pin(async move {
-        system_commands::frontend_heartbeat()?;
+        host_commands::frontend_heartbeat()?;
         Ok(Value::Null)
     })
 }
